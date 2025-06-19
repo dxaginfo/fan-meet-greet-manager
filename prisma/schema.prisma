@@ -1,0 +1,265 @@
+// This is the Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  MANAGER
+  STAFF
+  ARTIST
+  USER
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum EventType {
+  PRE_SHOW
+  POST_SHOW
+  VIRTUAL
+  SPECIAL
+}
+
+enum EventStatus {
+  DRAFT
+  PUBLISHED
+  CANCELLED
+  COMPLETED
+}
+
+enum RegistrationStatus {
+  CONFIRMED
+  WAITLISTED
+  CANCELLED
+  COMPLETED
+}
+
+enum MediaType {
+  PHOTO
+  VIDEO
+  SIGNATURE
+  MESSAGE
+}
+
+enum ProcessingStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum DeliveryStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+enum NotificationType {
+  REMINDER
+  CONFIRMATION
+  UPDATE
+  THANK_YOU
+}
+
+enum DeliveryMethod {
+  EMAIL
+  SMS
+  PUSH
+}
+
+model User {
+  id            String      @id @default(uuid())
+  email         String      @unique
+  passwordHash  String
+  fullName      String
+  role          UserRole    @default(USER)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  lastLogin     DateTime?
+  status        UserStatus  @default(ACTIVE)
+  artist        Artist?
+  events        Event[]
+  notifications Notification[]
+
+  @@map("users")
+}
+
+model Artist {
+  id                String     @id @default(uuid())
+  userId            String     @unique
+  user              User       @relation(fields: [userId], references: [id])
+  stageName         String
+  bio               String?
+  profileImageUrl   String?
+  socialMediaLinks  Json?
+  preferences       Json?
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+  events            Event[]
+
+  @@map("artists")
+}
+
+model Venue {
+  id              String    @id @default(uuid())
+  name            String
+  address         String
+  city            String
+  state           String
+  country         String
+  zipCode         String
+  contactPerson   String?
+  contactEmail    String?
+  contactPhone    String?
+  notes           String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  events          Event[]
+
+  @@map("venues")
+}
+
+model Event {
+  id             String        @id @default(uuid())
+  artistId       String
+  artist         Artist        @relation(fields: [artistId], references: [id])
+  title          String
+  description    String?
+  eventType      EventType
+  startDateTime  DateTime
+  endDateTime    DateTime
+  venueId        String
+  venue          Venue         @relation(fields: [venueId], references: [id])
+  capacity       Int
+  status         EventStatus   @default(DRAFT)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  createdById    String
+  createdBy      User          @relation(fields: [createdById], references: [id])
+  registrations  Registration[]
+  timeSlots      TimeSlot[]
+
+  @@map("events")
+}
+
+model Fan {
+  id                String         @id @default(uuid())
+  email             String         @unique
+  fullName          String
+  phoneNumber       String?
+  birthDate         DateTime?
+  socialMediaHandles Json?
+  interests         String[]
+  optInMarketing    Boolean        @default(false)
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  registrations     Registration[]
+  notifications     Notification[]
+
+  @@map("fans")
+}
+
+model Registration {
+  id               String             @id @default(uuid())
+  eventId          String
+  event            Event              @relation(fields: [eventId], references: [id])
+  fanId            String
+  fan              Fan                @relation(fields: [fanId], references: [id])
+  registrationTime DateTime           @default(now())
+  status           RegistrationStatus @default(CONFIRMED)
+  checkInTime      DateTime?
+  checkOutTime     DateTime?
+  notes            String?
+  specialRequests  String?
+  ticketCode       String             @unique
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  mediaItems       MediaItem[]
+  feedback         Feedback?
+  slotAssignment   SlotAssignment?
+
+  @@map("registrations")
+}
+
+model TimeSlot {
+  id              String           @id @default(uuid())
+  eventId         String
+  event           Event            @relation(fields: [eventId], references: [id])
+  startTime       DateTime
+  endTime         DateTime
+  capacity        Int
+  availableSpots  Int
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  slotAssignments SlotAssignment[]
+
+  @@map("time_slots")
+}
+
+model SlotAssignment {
+  id              String       @id @default(uuid())
+  slotId          String
+  timeSlot        TimeSlot     @relation(fields: [slotId], references: [id])
+  registrationId  String       @unique
+  registration    Registration @relation(fields: [registrationId], references: [id])
+  assignedAt      DateTime     @default(now())
+  status          String
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  @@map("slot_assignments")
+}
+
+model MediaItem {
+  id                String           @id @default(uuid())
+  registrationId    String
+  registration      Registration     @relation(fields: [registrationId], references: [id])
+  mediaType         MediaType
+  fileUrl           String
+  thumbnailUrl      String?
+  createdAt         DateTime         @default(now())
+  processingStatus  ProcessingStatus @default(PENDING)
+  deliveryStatus    DeliveryStatus   @default(PENDING)
+
+  @@map("media_items")
+}
+
+model Notification {
+  id              String           @id @default(uuid())
+  recipientType   String  // "user" or "fan"
+  recipientId     String
+  user            User?            @relation(fields: [recipientId], references: [id])
+  fan             Fan?             @relation(fields: [recipientId], references: [id])
+  type            NotificationType
+  content         String
+  deliveryMethod  DeliveryMethod
+  status          String
+  scheduledFor    DateTime?
+  sentAt          DateTime?
+  createdAt       DateTime         @default(now())
+
+  @@map("notifications")
+}
+
+model Feedback {
+  id               String       @id @default(uuid())
+  registrationId   String       @unique
+  registration     Registration @relation(fields: [registrationId], references: [id])
+  rating           Int
+  comments         String?
+  submittedAt      DateTime     @default(now())
+  createdAt        DateTime     @default(now())
+
+  @@map("feedback")
+}
