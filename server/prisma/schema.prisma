@@ -1,0 +1,274 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User model for administrators, staff, and organizers
+model User {
+  id                String    @id @default(uuid())
+  email             String    @unique
+  password          String
+  name              String
+  role              Role      @default(STAFF)
+  phone             String?
+  profileImage      String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  lastLogin         DateTime?
+  isActive          Boolean   @default(true)
+  resetToken        String?
+  resetTokenExpiry  DateTime?
+  events            Event[]   @relation("EventOrganizer")
+  timeSlots         TimeSlot[] @relation("TimeSlotStaff")
+  createdEvents     Event[]   @relation("EventCreator")
+
+  @@map("users")
+}
+
+enum Role {
+  ADMIN
+  ORGANIZER
+  STAFF
+}
+
+// Fan model for people attending meet & greets
+model Fan {
+  id               String    @id @default(uuid())
+  fullName         String
+  email            String    @unique
+  phone            String?
+  age              Int?
+  city             String?
+  state            String?
+  country          String?
+  socialHandles    Json?     // Stores social media handles as JSON
+  fanClubMemberId  String?
+  registrationDate DateTime  @default(now())
+  tags             String[]
+  imageUrl         String?
+  notes            String?
+  status           FanStatus @default(ACTIVE)
+  eventsAttended   Int       @default(0)
+  lastAttendance   DateTime?
+  registrations    Registration[]
+  documents        Document[]
+  photos           Photo[]
+
+  @@map("fans")
+}
+
+enum FanStatus {
+  ACTIVE
+  BLOCKED
+  PENDING
+}
+
+// Event model for meet & greet events
+model Event {
+  id                 String    @id @default(uuid())
+  title              String
+  description        String
+  eventDate          DateTime
+  startTime          DateTime
+  endTime            DateTime
+  location           String
+  venue              String?
+  capacity           Int
+  registrationsCount Int       @default(0)
+  status             EventStatus @default(DRAFT)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  imageUrl           String?
+  isVirtual          Boolean   @default(false)
+  meetingLink        String?
+  meetingDuration    Int       @default(5) // in minutes
+  registrationDeadline DateTime
+  registrations      Registration[]
+  timeSlots          TimeSlot[]
+  documents          Document[]
+  photos             Photo[]
+  organizer          User      @relation("EventOrganizer", fields: [organizerId], references: [id])
+  organizerId        String
+  createdBy          User      @relation("EventCreator", fields: [createdById], references: [id])
+  createdById        String
+
+  @@map("events")
+}
+
+enum EventStatus {
+  DRAFT
+  PUBLISHED
+  CANCELED
+  COMPLETED
+}
+
+// TimeSlot model for scheduling specific times within an event
+model TimeSlot {
+  id             String    @id @default(uuid())
+  startTime      DateTime
+  endTime        DateTime
+  maxCapacity    Int
+  currentCapacity Int      @default(0)
+  status         TimeSlotStatus @default(AVAILABLE)
+  notes          String?
+  event          Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  eventId        String
+  registrations  Registration[]
+  staff          User?     @relation("TimeSlotStaff", fields: [staffId], references: [id])
+  staffId        String?
+
+  @@map("time_slots")
+}
+
+enum TimeSlotStatus {
+  AVAILABLE
+  FULL
+  CLOSED
+}
+
+// Registration model for fan event registrations
+model Registration {
+  id             String    @id @default(uuid())
+  fan            Fan       @relation(fields: [fanId], references: [id])
+  fanId          String
+  event          Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  eventId        String
+  timeSlot       TimeSlot? @relation(fields: [timeSlotId], references: [id])
+  timeSlotId     String?
+  status         RegistrationStatus @default(REGISTERED)
+  registrationDate DateTime @default(now())
+  checkInTime    DateTime?
+  completionTime DateTime?
+  specialRequests String?
+  qrCode         String?
+  photos         Photo[]
+  documents      Document[]
+
+  @@map("registrations")
+}
+
+enum RegistrationStatus {
+  REGISTERED
+  CHECKED_IN
+  COMPLETED
+  CANCELED
+  NO_SHOW
+}
+
+// Document model for any documents associated with events, fans, or registrations
+model Document {
+  id             String    @id @default(uuid())
+  title          String
+  fileUrl        String
+  fileType       String
+  description    String?
+  uploadedAt     DateTime  @default(now())
+  event          Event?    @relation(fields: [eventId], references: [id])
+  eventId        String?
+  fan            Fan?      @relation(fields: [fanId], references: [id])
+  fanId          String?
+  registration   Registration? @relation(fields: [registrationId], references: [id])
+  registrationId String?
+
+  @@map("documents")
+}
+
+// Photo model for photos taken during meet & greets
+model Photo {
+  id             String    @id @default(uuid())
+  imageUrl       String
+  thumbnailUrl   String?
+  takenAt        DateTime  @default(now())
+  description    String?
+  isPublic       Boolean   @default(false)
+  event          Event?    @relation(fields: [eventId], references: [id])
+  eventId        String?
+  fan            Fan?      @relation(fields: [fanId], references: [id])
+  fanId          String?
+  registration   Registration? @relation(fields: [registrationId], references: [id])
+  registrationId String?
+
+  @@map("photos")
+}
+
+// Settings model for application settings
+model Setting {
+  id          String    @id @default(uuid())
+  key         String    @unique
+  value       String
+  description String?
+  updatedAt   DateTime  @updatedAt
+
+  @@map("settings")
+}
+
+// Notification model for system notifications
+model Notification {
+  id          String    @id @default(uuid())
+  type        NotificationType
+  title       String
+  message     String
+  isRead      Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  recipientId String
+  senderId    String?
+  entityType  String?   // 'event', 'registration', etc.
+  entityId    String?   // ID of related entity
+  data        Json?     // Additional data
+
+  @@map("notifications")
+}
+
+enum NotificationType {
+  EVENT_REMINDER
+  CHECK_IN_REMINDER
+  REGISTRATION_CONFIRMATION
+  EVENT_CHANGED
+  EVENT_CANCELED
+  ADMIN_NOTIFICATION
+  CUSTOM
+}
+
+// Audit log for system activity
+model AuditLog {
+  id          String    @id @default(uuid())
+  action      String
+  userId      String
+  userEmail   String
+  entityType  String    // 'user', 'event', 'fan', etc.
+  entityId    String
+  details     String?
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime  @default(now())
+
+  @@map("audit_logs")
+}
+
+// Template model for email and SMS templates
+model Template {
+  id          String    @id @default(uuid())
+  name        String    @unique
+  type        TemplateType
+  subject     String?
+  content     String
+  variables   String[]
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("templates")
+}
+
+enum TemplateType {
+  EMAIL
+  SMS
+  PUSH
+}
