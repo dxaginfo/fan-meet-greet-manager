@@ -1,0 +1,73 @@
+{
+  "name": "fan-meet-greet-manager",
+  "version": "1.0.0",
+  "description": "A comprehensive web application to help musicians organize, manage, and optimize fan interaction events",
+  "main": "index.js",
+  "scripts": {
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
+    "dev:server": "nodemon server/index.js",
+    "dev:client": "cd client && npm start",
+    "build": "cd client && npm run build",
+    "start": "node server/index.js",
+    "test": "jest",
+    "migrate": "prisma migrate dev",
+    "migrate:deploy": "prisma migrate deploy",
+    "lint": "eslint .",
+    "format": "prettier --write ."
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dxaginfo/fan-meet-greet-manager.git"
+  },
+  "keywords": [
+    "music",
+    "fan",
+    "meet-and-greet",
+    "event-management",
+    "artist",
+    "scheduling"
+  ],
+  "author": "dxaginfo",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/dxaginfo/fan-meet-greet-manager/issues"
+  },
+  "homepage": "https://github.com/dxaginfo/fan-meet-greet-manager#readme",
+  "dependencies": {
+    "@prisma/client": "^4.16.0",
+    "aws-sdk": "^2.1410.0",
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "express-rate-limit": "^6.7.1",
+    "helmet": "^7.0.0",
+    "jsonwebtoken": "^9.0.1",
+    "multer": "^1.4.5-lts.1",
+    "passport": "^0.6.0",
+    "passport-jwt": "^4.0.1",
+    "passport-oauth2": "^1.7.0",
+    "redis": "^4.6.7",
+    "sharp": "^0.32.1",
+    "socket.io": "^4.7.1",
+    "winston": "^3.10.0",
+    "yup": "^1.2.0"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.17",
+    "@types/node": "^20.4.1",
+    "concurrently": "^8.2.0",
+    "eslint": "^8.44.0",
+    "eslint-config-prettier": "^8.8.0",
+    "eslint-plugin-prettier": "^5.0.0",
+    "jest": "^29.6.1",
+    "nodemon": "^3.0.1",
+    "prettier": "^3.0.0",
+    "prisma": "^4.16.0",
+    "supertest": "^6.3.3",
+    "typescript": "^5.1.6"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}
